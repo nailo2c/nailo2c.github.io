@@ -1,16 +1,16 @@
-+++
-date = '2025-11-21T00:00:00-00:00'
-draft = true
-title = 'AssetAndTimeScheduler實作過程思考與紀錄（2/2）'
-tags = ["Airflow"]
-categories = ["Open Source"]
-+++
+---
+title: "AssetAndTimeScheduler實作過程思考與紀錄（2/2）"
+date: "2025-11-21T00:00:00-00:00"
+draft: true
+tags: ["Airflow"]
+categories: ["Open Source"]
+---
 
 如果 Asset 永遠不準備好，會發生什麼事？
 
-# 實作
+## 實作
 
-## AssetAndTimeSchedule
+### AssetAndTimeSchedule
 
 基本上與 `AssetOrTimeSchedule` 相同，不同點有二：
 1. `AssetAndTimeSchedule` 不需被Asset Triggered，因此繼承 `Timetable`。
@@ -30,7 +30,7 @@ class class AssetAndTimeSchedule(Timetable):
         return self.timetable.generate_run_id(run_type=run_type, **kwargs)
 ```
 
-## Scheduler
+### Scheduler
 
 首先對 `DagModel.dags_needing_dagruns` 稍做修改，讓 `AssetAndTimeSchedule` 物件能不被加入到 `triggered_date_by_dag`，因為我們不依賴 Asset Triggered。
 
