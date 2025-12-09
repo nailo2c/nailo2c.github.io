@@ -1,5 +1,5 @@
 ---
-title: "AssetAndTimeScheduler實作過程思考與紀錄（2/2）"
+title: "AssetAndTimeScheduler實作過程思考與紀錄（Part 2）"
 date: "2025-11-21T00:00:00-00:00"
 draft: true
 tags: ["Airflow"]
