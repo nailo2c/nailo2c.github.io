@@ -61,5 +61,6 @@ test-namespace       Active   15m
 ```console
 breeze k8s build-k8s-image
 breeze k8s upload-k8s-image
-kubectl delete pod -n airflow -l 'component in (dag-processor, scheduler, api-server, triggerer)'
+helm uninstall airflow -n airflow
+breeze k8s deploy-airflow
 ```
