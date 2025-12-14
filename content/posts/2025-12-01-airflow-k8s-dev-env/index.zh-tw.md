@@ -35,7 +35,7 @@ E1123 10:59:15.473418   16746 memcache.go:265] couldn't get current server API g
 問題在於Kubectl沒有指到我們剛剛建立的K8s cluster，此時直接手動設置context。
 
 ```console
-aaron.chen@Aarons-MacBook-Air-3 airflow % kind get clusters                                           
+aaron.chen@Aarons-MacBook-Air-3 airflow % kind get clusters
 airflow-python-3.10-v1.30.13
 aaron.chen@Aarons-MacBook-Air-3 airflow % kind export kubeconfig --name airflow-python-3.10-v1.30.13
 Set kubectl context to "kind-airflow-python-3.10-v1.30.13"
@@ -59,8 +59,8 @@ test-namespace       Active   15m
 就我所知，目前要在 update k8s cluster airflow dag 有點麻煩，必須將 dag 放到 airflow 根目錄的 `/dags` 資料夾下並 rebuild image 並重啟 dag-processor 和 scheduler，整個過程在我的 local device 大約花費六分鐘。
 
 ```console
+helm uninstall airflow -n airflow
 breeze k8s build-k8s-image
 breeze k8s upload-k8s-image
-helm uninstall airflow -n airflow
 breeze k8s deploy-airflow
 ```
