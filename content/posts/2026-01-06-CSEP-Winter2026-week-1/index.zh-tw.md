@@ -1,5 +1,5 @@
 ---
-title: "UW CSE - Week 1 心得"
+title: "UW CSE - Winter 2026 - Week 1 心得"
 date: "2026-01-06T00:00:00-00:00"
 draft: true
 tags: ["Computer Science"]
