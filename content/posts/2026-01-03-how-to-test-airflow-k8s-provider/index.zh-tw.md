@@ -31,3 +31,19 @@ breeze prod-image build --python 3.10 \
 ```
 
 這邊要注意 airflow 的版本是我自己選的，我選 `3.1.2` 是因為當下這個時間點，constraints只有3.1.2。而且使用 `--airflow-constraints-mode` 跟 `--airflow-constraints-location` 這兩個 flag 也是因為 breeze prod-image build 的某些 flag 有 bug，之後我再看有沒有機會去修正它。
+
+* 2026-01-30 補充
+
+最近要測試3.1.7rc1版本時，我發現我按照我自己之前的指令無法運作。研究一陣後，把core跟task-sdk的wheel檔案也下載後，執行
+```console
+breeze prod-image build --python 3.10 \
+  --install-distributions-from-context
+```
+
+就行了。
+
+| 套件 | 版本 | PyPI 下載頁 |
+|---|---|---|
+| apache-airflow | 3.1.7rc1 | https://pypi.org/project/apache-airflow/3.1.7rc1/#files |
+| apache-airflow-core | 3.1.7rc1 | https://pypi.org/project/apache-airflow-core/3.1.7rc1/#files |
+| apache-airflow-task-sdk | 1.1.7rc1 | https://pypi.org/project/apache-airflow-task-sdk/1.1.7rc1/#files |
