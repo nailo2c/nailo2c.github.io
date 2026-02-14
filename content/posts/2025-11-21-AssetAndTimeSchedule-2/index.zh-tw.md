@@ -1,9 +1,15 @@
 ---
 title: "AssetAndTimeScheduler實作過程思考與紀錄（Part 2）"
 date: "2025-11-21T00:00:00-00:00"
-draft: true
+draft: false
+description: "此篇文章記錄了個人思考與開發 Issue #58506 所要求 feature 的過程 - Part 2"
+featuredImage: "airflow_feat_implementation.png"
+
 tags: ["Airflow"]
 categories: ["Open Source"]
+
+math:
+  enable: true
 ---
 
 如果 Asset 永遠不準備好，會發生什麼事？
