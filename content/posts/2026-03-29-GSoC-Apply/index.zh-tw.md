@@ -5,8 +5,8 @@ draft: true
 description: ""
 featuredImage: ""
 
-tags: ["Study"]
-categories: ["Study"]
+tags: ["GSoC"]
+categories: ["Open Source"]
 
 math:
   enable: true
