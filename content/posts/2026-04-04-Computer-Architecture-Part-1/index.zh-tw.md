@@ -62,3 +62,43 @@ Computer Architecture就是學習Application到Physics之間的架構，因為�
 
 IBM發展出來的就是大名鼎鼎的x86架構。
 
++ Stack Machine
+(a + b * c) / (a + d * c - e) 可以轉化為:  
+abc*+adc*+e-/
+
+用stack的方式表達這個四則運算，難怪某些LeetCode要考這個資料結構
+
+Stack的最大問題是理論上可以一直堆疊，但物理上很難做到那麼大
+
+像上述的運算會變成:  
+
+|                  |
+|------------------|
+| stack (size = 2) |
+| R0               |
+| R0 R1            |
+| R0 R1 R2         |
+| R0 R1            |
+| R0               |
+| R0 R1            |
+| R0 R1 R2         |
+| R0 R1 R2 R3      |
+| R0 R1 R2         |
+| R0 R1            |
+| R0 R1 R2         |
+| R0 R1            |
+| R0               |
+
+
+因為有缺點，所以架構才一路進化，Stack -> Accumulator -> Register-Memory -> Register-Register。
+
+之前上的Nand2Tetris是接近Register-Register架構。
+
+投影片介紹了一些 instruction 的定義（不同家的CPU會有不同定義）、Data Type、ISA Encoding的方法如Fixed Width跟Variable Length、
+
+我認為主要在講歷史進程，以及當下的考量與trade-off。我不追求背起來，先留個印象以及當下設計的取捨。
+
+ARM跟x86是不同的Architecture，擁有不同的ISA。而Apple的M系列晶片是做在ARM下的Microarchitecture，不自己做ISA的可能理由是生態系、相容性以及開發者友善不友善。
+
+# Module 2
+
