@@ -102,3 +102,70 @@ ARM跟x86是不同的Architecture，擁有不同的ISA。而Apple的M系列晶�
 
 # Module 2
 
+1. Structural hazards：硬體資源衝突
+2. Data hazards：資料相依衝突
+3. Control hazards：控制流程不確定
+
+Microcoded: 把ISA指令在CPU內拆成更多小步驟  
+e.g. `ADD R1, R2, R3`
+1. 讀出 R2
+2. 讀出 R3
+3. 送進 ALU
+4. 做加法
+5. 把結果寫回 R1
+
+一個 cycle 的定義是一個 clock period  
+1 GHz = 每秒 10^9 個 cycle  
+此時 period = 1 ns
+
++ pipelined processor vs unpipelined control  
+    + 前者可以多條指令存在不同的stages，例如第 1 條 instruction 在 EX 時，第 2 條可以在 ID，第 3 條可以在 IF  
+    + 後者沒有 instruction overlap，例如第 1 條 instruction 走 IF  
+        + 再走 ID  
+        + 再走 EX  
+        + 再走 MEM  
+        + 再走 WB  
+        + 全部做完後，第 2 條 instruction 才開始
+
+每個instruction會執行的cycles可能都不同
+
+## Structural Hazards
+
+三種解決辦法: Schedule、Stall、加更多資源
+
++ 範例
+LW : F D X M W  
+ADD:   F D X M W  
+ADD:     F D X M W  
+ADD:       - F D X M W  
+
+上述的第三個ADD需要stall一個cycle，因為Fetch跟Memory的load是不能同時操作的。
+
++ 多加一個Memory
+ADD: F D X M0 M1 W  
+ADD:   F D X  M0 M1 W  
+LW :     F D  X  M0 M1 W  
+LW :       F  D  X  -  M0 M1 W  
+ADD:          F  D  -  X  M0 M1 W  
+
+第一個stall: W, M1, M2 會因為搶memory datapath而產生structure hazard  
+第二個stall: 由於LW2的X被stall了，卡住了ADD3的X，因此ADD3的X需要等LW2的X執行完才能執行  
+
+## Data Hazards
+
+e.g.  
+I1: add r1, r2, r3  
+I2: sub r4, r1, r5  
+I2需要I1的r1  
+
+資料相依問題發生時，通常採用以下四種策略
+1. Schedule: 在instruction間安插一個不相關的instruction
+2. Stall: 先等一下讓資料產生
+3. Bypass: I1的X算出結果後直接先給I2，因此I2不必等I1的M跟W
+4. Speculate: 先假設沒問題，照跑。萬一猜錯了就把錯誤丟回去重跑
+
+有專門的一個元件在偵測hazard/stall，課堂花很多篇幅介紹這個元件的原理，例如他會需要知道每種 instruction 到底讀哪些 register、寫哪個 register 之類的。
+
+Memory address dependency會造成stall
+
+架構中可以加Bypass，也就是將比較後面stage的output提前送回ALU，可以解決某些情況下的stall/data hazard
