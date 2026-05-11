@@ -197,5 +197,41 @@ TL;DR - 發PR時，CI驗證會用
 
 將文件補齊
 
-# 驗證
+## 驗證
 
+透過實際跑一次CI，可以從 Generate constraints 的步驟觀察到我們的實作有確實被執行，並且從下載連結中可以找到 build-constraints-*.txt file 確實被產生了。
+
+# PR討論
+
+在 2026-05-10 時，PMC member第一次做review，提出以下問題。
+
+## Conflict-detection regex is brittle to future uv error-message changes (scripts/in_container/run_generate_constraints.py:809-817)
+
+這邊是在講當版本衝突發生時，例如 `"cython": {"cython>=3.0,<3.1", "cython>=3.1.2,<3.3.0"}`
+
+uv pip compile 會失敗，此時 `_resolve_build_requirements` 會解析 stderr，並將衝突的套件例如 `cython` 解析出，並移除。
+
+此問題擔心若 uv 將 error log 格式修改了，我們的 regex 無法如預期運作，就無法將 cython 移除。
+
++ Reviewer Feedback  
+修改log，叫大聲一點，等壞掉時比較好debug
+
++ 我認為更好的改法  
+新增一個 smoke test
+```python
+@pytest.mark.integration
+def test_conflict_auto_resolution_with_real_uv(tmp_path):
+    """Smoke test: real uv with a known conflict — proves the regex
+    actually matches uv's current stderr format."""
+    # 構造一個確定會衝突的 build_reqs
+    build_reqs = {
+        "pkg_a": {"cython>=3.0,<3.1"},
+        "pkg_b": {"cython>=3.1.2"},
+    }
+    output_path = tmp_path / "build-constraints.txt"
+    _resolve_build_requirements(build_reqs, output_path, config_params=...)
+    # 預期: 自動 skip cython,produce 空檔或只剩其他套件
+    assert output_path.exists() 
+```
+
+這樣每次Airflow Canary Run都會跑到這個冒煙測試，如果 uv 真的改了就能提早偵查到。
