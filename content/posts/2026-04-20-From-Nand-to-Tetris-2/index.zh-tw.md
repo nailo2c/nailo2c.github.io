@@ -827,3 +827,44 @@ The compilation unit is a class.
 | `CompileTerm` | -- | -- | Compiles a term. If the current token is an identifier, the routine must distinguish between a variable, an array entry, or a subroutine call. A single look-ahead token, which may be one of `[`, `(`, or `.`, suffices to distinguish between the possibilities. Any other token is not part of this term and should not be advanced over. |
 | `CompileExpressionList` | -- | -- | Compiles a possibly empty comma-separated list of expressions. |
 
+
+# Unit 5 - Compiler II: Code Generation
+
+
+### 5.1
+
++ 一次只編譯一個 class，為了簡化複雜度 + 模組化
++ 可以只編譯 file 裡的一個 subroutine，目的也是模組化
+
+### 5.2
+
++ source code 裡的變數，例如 x，在轉換成 vm code 時會需要知道它是 field, static, local, argument 以及 memory 位置，因為 vm code 沒有變數。
++ 變數有四種資訊要記錄: name, type, kind, scope
+    + 例子: `field int x;` 其中 name=x, type=int, kind=field, scope=class level
++ 用 Symbol tables 紀錄: 包含 name, type, kind, # (memory address)
+    + Symbol tables 有 class-level 與 subroutine-level
++ method 裡會隱含 this，因為 method 可能用到 class-level 的變數例如 x，則這個 x 其實就是 this.x
++ 如果一個 class 有兩個 subroutine，則會有一個 class-level 的 symbol table，以及兩個 subroutine-level 的 symbol table。只是在進行第二個 subroutine 時，就會把第一個 subroutine-level 的 symbol table 丟棄
+
+### 5.3
+
++ infix  : a * (b + c)
++ prefix : * a + b c
++ postfix: a b c + *
+
+這個 unit 的目標是將 code 從 infix-style 轉為 postfix-style
+
+Project 11 的 compiler 目標是將 source code 轉為 VM code
+
+e.g.  
+```
+let x = a + b - c;
+->
+push a
+push b
++
+push c
+-
+pop x
+```
+
