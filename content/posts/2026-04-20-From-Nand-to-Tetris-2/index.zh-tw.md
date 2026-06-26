@@ -868,3 +868,205 @@ push c
 pop x
 ```
 
+### 5.4
+
+這個 unit 談論 `while` & `if` statements，因為其他的 `let`, `do`, `return` 相對單純。
+
++ `if` statement
+    + 先做用 not else，這樣條件為 false 時會先跳到 label L1 來執行 else 的邏輯
+    + 如果不用 not 寫法，vm code會比較長一點
+
+```
+compiled expression
+not
+if-goto L1
+
+compiled statement1
+goto L2
+
+label L1
+compiled statement2
+
+label L2
+```
+
++ `while` statement
+    + 也是用 not 邏輯
+
+```
+lable L1
+    compiled (expression)
+    not
+    if-goto L2
+    compiled (statements)
+    goto L1
+label L2
+...
+```
+
++ 多個 `if` 跟 `while` statements
+    + label should be unique
+    + 結構時常會是 nested
+
+
+### 5.5
+
++ High-level 的 jack code 有 object 概念
++ Mid-level 的 VM programs 只有 local / argument / this / that / pointer / constant / static / temp
++ Low-level 只有 RAM address
++ Compiler 弭平了各個 level 間的 gap
++ host RAM 在 stack 段存放 local & argument，在 heap 段存放 objects & arrays
+    + 用 this/that 去存取 objects & arrays
+
+| VM code (commands) | VM implementation (resulting effect) |
+| ------------------ | ------------------------------------ |
+| push 8000 <br> pop pointer 0 | <br> sets THIS to 8000     |
+| push/pop this 0 <br> push/pop this 1 <br> ... <br> push/pop this i | accessing RAM[8000] <br> accessing RAM[8001] <br> ... <br> accessing RAM[8000+i] |
+
+### 5.6
+
+```jack
+...
+var Point p1;
+...
+let p1 = Point.new(2, 3);
+...
+```
+
+p1 會存到 local variable (stack) 中，然後 object 的細節則會存到 heap 中。
+
+Init 一個 object 時，會使用 `Memory.alloc` 來確認哪一段 memory 是有足夠的空間來初始化這個 object。
+
+範例 (class) :
+```jack
+class Point {
+    field int x, y;
+    static int pointCount;
+    ...
+    /** Constructs a new point */
+    constructor Point new(int ax, int ay) {
+        let x = ax;
+        let y = ay;
+        let pointCount = pointCount + 1;
+        return this;
+    }
+}
+```
+
+compiled code 如下:
+```vm
+// constructor Point new(int ax, int ay)
+
+// The compiler creates the subroutine's symbol table.
+// The compiler figures out the size of an object of this class (n), and writes code that calls Memory.alloc(n).
+// This OS method finds a memory block of the required size, and returns its base address.
+
+push 2  // two 16-bit words are required (x and y) p.s. one word = 16 bits
+call Memory.alloc 1  // one argument. assume it's RAM[6012], RAM[6013], it would return 6012 to pointer
+pop pointer 0  // anchors this at the base address, which means 6012 would be pop and put it to pointer 0
+
+// let x = ax; let y = ay;
+push argument 0  // when symbol table be created, ax has been put on argument 0
+pop this 0       // pop stack top (ax), and put it to this 0
+pusn argument 1
+pop this 1
+
+// let pointCount = pointCount + 1;
+push static 0
+push 1
+add
+pop static 0
+
+// return this
+push pointer 0
+return
+```
+
+### 5.7
+
+這一個 Unit 會解釋怎麼操作 Object。
+
++ 將 OO style 轉為 Procedural style
+    + `p1.distance(p2) -> distance(p1,p2)`
+    + `p1.getx() -> getx(p1)`
+    + `obj.foo(x1, x2, ...) -> foo(obj, x1, x2, ...)`
+
+```vm
+// obj.foo(x1, x2, ...)
+push obj
+push x1
+push x2
+push ...
+call foo
+
+// let d = p1.distance(p2);
+...
+push p1
+push p2
+call distance
+...
+```
+
++ 如何 compiling methods?
+```jack
+class Point {
+    field int x, y;
+    static int pointCount;
+    ...
+    method int distance(Point other) {
+        var int dx, dy
+        let dx = x - other.getx();
+        let dy = y - other.gety();
+        return Math.sqrt((dx*dx) + (dy*dy));
+    }
+    ...
+}
+```
+
+VM code
+```
+// method int distance(Point other)
+// var int dx, dy
+push argument 0
+pop pointer 0  // THIS = argument 0
+
+// let dx = x - other.getx()
+push this 0   // this 0 store the first field, in this case is `x`
+push argument 1
+call Point.getx 1
+sub
+pop local 0
+// let dy = y - other.gety()
+// Similar, code omitted.
+
+// return Math.sqrt((dx*dx) + (dy*dy))
+push local 0
+push local 0
+call Math.multiply 2
+push local 1
+push local 1
+call Math.multiply 2
+add
+call Math.sqrt 1
+return
+```
+
+補充:  
+push argument 0  → 拿到 object address  
+push this 0      → 拿到 object 的第 0 個 field，也就是 x  
+
++ 如何 compiling void methods
+```
+// method void print()
+push argument 0
+pop pointer 0
+// compiled code omitted
+// Methods must return a value
+push constant 0
+return
+```
+
+這堂課我們約定 method 一定要有值 return，因此 void 我們 push constant 0，然後在外層（caller層），用 pop temp 0 把 stack top 的 constant 0 給 drop 掉。
+
+### 5.8
+
