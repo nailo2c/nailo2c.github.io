@@ -1070,3 +1070,44 @@ return
 
 ### 5.8
 
+跟 object 一樣， array 被 init 時會在 stack (local) 一個地方紀錄 heap 的 address。例如 `Array.new(5)` 就會在 heap 找五個地址。
+
+array 通常用 `THAT` memory segment，使用 `pop pointer 1` 來 set。
+
+e.g.
+```vm
+// arr[2] = 17
+push arr  // e.g. 8056
+push 2    
+add       // 8058
+pop pointer 1  // store 8058 to THAT 0
+push 17
+pop that 0  // store 17 to RAM[8058]
+```
+
+pointer 1 代表 THAT，每次 arr index 變動時，都會重新把對應的 memory address 存到 THAT，再把 value 存到 RAM[THAT] 即可。
+
+當更複雜的情境出現時 `a[i] = b[j]`，我們會需要 temp variable。
+```vm
+// a[i] = b[j]
+push a
+push i
+add
+push b
+push j
+add            // state 1
+pop pointer 1
+push that 0
+pop temp 0     // state 2
+pop pointer 1
+push temp 0    // state 3
+pop that 0
+```
+
+第一個 pop pointer 1 是指說把Stack top (也就是 b[j] 的memory address) pop 到 pointer 1  
+接下來 push that 0，就是把剛剛存到 pointer 1 的 value 丟到 stack top  
+然後 pop temp 0，就會把 b[j] 的 value 存到 temp 0   
+
+接下來把 a[i] 的 mem address 丟到 pointer 1  
+push temp 0 也就是把 b[j] value 丟到 stack top  
+接著把 b[j] value assign到 that 0，也就是 a[i] 的 memory address  
