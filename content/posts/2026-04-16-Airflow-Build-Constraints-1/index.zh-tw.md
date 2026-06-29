@@ -235,3 +235,11 @@ def test_conflict_auto_resolution_with_real_uv(tmp_path):
 ```
 
 這樣每次Airflow Canary Run都會跑到這個冒煙測試，如果 uv 真的改了就能提早偵查到。
+
+## 2026-06-29 Update
+
+Airflow大佬 Jarek 留言給我說這個 issue 對現在的社群已經不太重要了，因為當前的 CI 已經負擔沈重，外加這個事件非常罕見，過去七年只發生四次，因此他覺得已經不值得放更多心力在上面。
+
+雖然有點可惜，但至少我學到了滿多相關的知識的，因此我留了一個禮貌的留言說沒事～我可以把這些PR關掉。
+
+相關留言在此: https://github.com/apache/airflow/pull/68962
