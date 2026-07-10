@@ -1111,3 +1111,704 @@ pop that 0
 接下來把 a[i] 的 mem address 丟到 pointer 1  
 push temp 0 也就是把 b[j] value 丟到 stack top  
 接著把 b[j] value assign到 that 0，也就是 a[i] 的 memory address  
+
+### 5.9
+
+這個 Unit 是個大總結:
+
+```markdown
+# Jack Compiler Standard Mapping over VM
+
+## 1. File mapping
+
+// 每個 Jack class file 會被編譯成同名的 VM file
+Main.jack   -> Main.vm
+Point.jack  -> Point.vm
+Square.jack -> Square.vm
+
+
+## 2. Subroutine mapping
+
+// Jack 裡的 constructor / function / method，到 VM 層都會變成 function
+constructor Point new(...) -> function Point.new
+function int foo(...)      -> function ClassName.foo
+method int bar(...)        -> function ClassName.bar
+
+
+## 3. Function / Constructor arguments
+
+// function 和 constructor 有幾個 Jack arguments，VM 就有幾個 arguments
+function int foo(int x, int y)
+
+x -> argument 0
+y -> argument 1
+
+
+constructor Point new(int ax, int ay)
+
+ax -> argument 0
+ay -> argument 1
+
+
+## 4. Method arguments
+
+// method 會多一個隱含的 this argument
+method int distance(Point other)
+
+this  -> argument 0
+other -> argument 1
+
+
+// 呼叫 method 時，caller 會把 object address 當成第一個 argument 傳入
+p1.distance(p2)
+
+argument 0 = p1 object address
+argument 1 = p2 object address
+
+
+## 5. Variable mapping
+
+// Jack variable kind 對應到 VM segment
+local    -> local
+argument -> argument
+static   -> static
+field    -> this
+
+
+## 6. Local variables
+
+// subroutine 裡的 var 會對應到 local segment
+var int x, y;
+
+x -> local 0
+y -> local 1
+
+
+## 7. Argument variables
+
+// subroutine 參數會對應到 argument segment
+function void foo(int x, int y)
+
+x -> argument 0
+y -> argument 1
+
+
+## 8. Static variables
+
+// static 是 class-level 共用變數，對應到 static segment
+static int pointCount;
+
+pointCount -> static 0
+
+
+## 9. Field variables
+
+// field 是 object-level 變數，對應到 this segment
+field int x, y;
+
+x -> this 0
+y -> this 1
+
+
+// 但使用 this 之前，必須先讓 pointer 0 指向目前 object
+push argument 0
+pop pointer 0
+
+pointer 0 = THIS
+this 0 = currentObject.x
+this 1 = currentObject.y
+
+
+## 10. Method setup
+
+// method 一開始要把 argument 0 設成 THIS
+method int distance(Point other)
+
+push argument 0
+pop pointer 0
+
+
+// 之後 method 裡的 field access 才會正確
+x -> this 0
+y -> this 1
+
+
+## 11. Method call
+
+// 呼叫 method 時，要先 push 呼叫者 object，再 push 明確參數
+p1.distance(p2)
+
+push p1
+push p2
+call Point.distance 2
+
+
+// 進入 Point.distance 後
+argument 0 = p1 = this
+argument 1 = p2 = other
+
+
+## 12. Constructor setup
+
+// constructor 要配置新 object 的 heap 空間
+class Point {
+    field int x, y;
+}
+
+Point object size = 2 words
+
+
+// 呼叫 Memory.alloc 配置 2 words，並讓 this 指向新 object
+push constant 2
+call Memory.alloc 1
+pop pointer 0
+
+
+// 初始化 fields
+let x = ax;
+let y = ay;
+
+push argument 0
+pop this 0
+
+push argument 1
+pop this 1
+
+
+// constructor 最後回傳 this，也就是新 object 的 heap address
+return this;
+
+push pointer 0
+return
+
+
+## 13. Object construction from caller side
+
+// 宣告 object variable 不會建立 object，只是建立一個變數存 address
+var Point p1;
+
+p1 -> local 0
+
+
+// 呼叫 constructor 才會真的建立 object
+let p1 = Point.new(2, 3);
+
+push constant 2
+push constant 3
+call Point.new 2
+pop local 0
+
+
+// 結果
+local 0 = p1 object address
+
+p1 本身在 local segment
+p1 指向的 object data 在 heap
+
+
+## 14. Array declaration
+
+// 宣告 array variable 不會建立 array，只是建立一個變數存 address
+var Array arr;
+
+arr -> local 0
+
+
+## 15. Array construction
+
+// Array.new(n) 才會真的在 heap 配置 array 空間
+let arr = Array.new(n);
+
+push n
+call Array.new 1
+pop local 0
+
+
+// 結果
+local 0 = arr base address
+
+arr 本身在 local segment
+arr 的內容在 heap
+
+
+## 16. Array access
+
+// arr[i] 的核心做法是先算出 arr + i
+arr[i] address = arr base address + i
+
+
+// 然後把 pointer 1 設成 arr[i] 的 address
+push arr
+push i
+add
+pop pointer 1
+
+
+// pointer 1 = THAT
+// that 0 = arr[i]
+push that 0
+
+
+## 17. Array assignment
+
+// let arr[i] = value;
+push arr
+push i
+add
+pop pointer 1
+
+push value
+pop that 0
+
+
+## 18. Complex array assignment
+
+// let a[i] = b[j];
+
+// 先算 a[i] 的 address，留在 stack
+push a
+push i
+add
+
+// 再算 b[j] 的 address
+push b
+push j
+add
+
+// 讓 THAT 指向 b[j]
+pop pointer 1
+
+// 讀出 b[j] 的 value，暫存在 temp 0
+push that 0
+pop temp 0
+
+// 讓 THAT 改指向 a[i]
+pop pointer 1
+
+// 把 b[j] 的 value 寫進 a[i]
+push temp 0
+pop that 0
+
+
+## 19. Void subroutine
+
+// VM 規定每個 function 都要 return 一個 value
+// 所以 void subroutine 也要回傳 dummy value
+method void print()
+
+push constant 0
+return
+
+
+## 20. Void method call
+
+// caller 不需要 void method 的回傳值，所以要把 dummy value 丟掉
+do p1.print();
+
+push p1
+call Point.print 1
+pop temp 0
+
+
+## 21. do statement
+
+// do statement 表示呼叫 subroutine，但不使用回傳值
+do something();
+
+call Something
+pop temp 0
+
+
+## 22. return statement
+
+// return expression;
+compile expression
+return
+
+
+// return;
+push constant 0
+return
+
+
+## 23. true / false / null
+
+// false 和 null 都是 0
+false -> push constant 0
+null  -> push constant 0
+
+
+// true 是 -1
+true -> push constant 1
+        neg
+
+
+## 24. Arithmetic operators
+
+// VM 有些 arithmetic command 可以直接用
++  -> add
+-  -> sub
+&  -> and
+|  -> or
+<  -> lt
+>  -> gt
+=  -> eq
+~  -> not
+
+
+// multiplication / division 需要呼叫 OS function
+* -> call Math.multiply 2
+/ -> call Math.divide 2
+
+
+## 25. String constants
+
+// String constant 要透過 String.new 和 String.appendChar 建立
+"abc"
+
+push constant 3
+call String.new 1
+
+push constant 97
+call String.appendChar 2
+
+push constant 98
+call String.appendChar 2
+
+push constant 99
+call String.appendChar 2
+
+
+## 26. Object allocation
+
+// 建立 object 時，constructor 會呼叫 Memory.alloc
+object size = number of fields
+
+push constant objectSize
+call Memory.alloc 1
+pop pointer 0
+
+
+## 27. Memory deallocation
+
+// 回收 object / array 時，使用 Memory.deAlloc
+push objectAddress
+call Memory.deAlloc 1
+
+
+## 28. OS classes
+
+// Jack OS 會提供一些 VM classes
+Math.vm
+Memory.vm
+Array.vm
+String.vm
+Output.vm
+Screen.vm
+Keyboard.vm
+Sys.vm
+
+
+// compiler 產生的 VM code 可以直接呼叫 OS functions
+call Math.multiply 2
+call Math.divide 2
+call Memory.alloc 1
+call String.new 1
+call Output.printString 1
+
+
+# Core Summary
+
+class file    -> VM file
+subroutine    -> VM function
+
+local         -> local segment
+argument      -> argument segment
+static        -> static segment
+field         -> this segment
+
+method        -> argument 0 is this
+constructor   -> Memory.alloc + pointer 0 + return this
+array access  -> pointer 1 + that 0
+void return   -> push constant 0
+do call       -> pop temp 0
+
+pointer 0     -> THIS
+pointer 1     -> THAT
+
+this i        -> current object's field i
+that 0        -> currently selected array entry
+
+object variable -> stores heap address
+array variable  -> stores heap address
+object data     -> stored in heap
+array data      -> stored in heap
+```
+
+### 5.10
+
+```
+# Project 11 Additions
+
+## Output target
+
+// Project 11 輸出 VM code，不再輸出 XML
+Main.jack  -> Main.vm
+Point.jack -> Point.vm
+
+
+## SymbolTable
+
+// 新增 symbol table 管理 identifier metadata
+name
+type
+kind
+index
+
+
+## SymbolTable scopes
+
+// 只需要兩層 scope
+classScope
+subroutineScope
+
+
+// classScope：每個 class reset
+static
+field
+
+
+// subroutineScope：每個 subroutine reset
+argument
+local
+
+
+## SymbolTable API
+
+// 建立 / 重設 scope
+new()
+startSubroutine()
+
+
+// 定義 symbol
+define(name, type, kind)
+
+
+// 查詢 symbol count
+varCount(kind)
+
+
+// 查詢 symbol metadata
+kindOf(name)
+typeOf(name)
+indexOf(name)
+
+
+## Symbol index rule
+
+// 同 kind 內從 0 開始遞增
+static 0
+static 1
+
+field 0
+field 1
+
+argument 0
+argument 1
+
+local 0
+local 1
+
+
+## VMWriter
+
+// 新增 VM output abstraction
+writePush(segment, index)
+writePop(segment, index)
+writeArithmetic(command)
+writeLabel(label)
+writeGoto(label)
+writeIf(label)
+writeCall(name, nArgs)
+writeFunction(name, nLocals)
+writeReturn()
+
+
+## CompilationEngine changes
+
+// 從 XML emission 改成 VM emission
+XML tags -> VMWriter calls
+
+
+// compileXXX contract
+read XXX
+advance tokenizer beyond XXX
+emit VM code for XXX
+
+
+## Expression contract
+
+// compileExpression / compileTerm 產生的 VM code
+// 必須把 expression result 留在 stack top
+expression -> stack top
+
+
+## Code generation dependencies
+
+// CompilationEngine 需要使用
+JackTokenizer
+SymbolTable
+VMWriter
+
+
+## Identifier handling
+
+// identifier lookup order
+subroutineScope
+classScope
+
+
+// 找不到時，可能是 class name 或 subroutine name
+symbol not found -> className / subroutineName
+
+
+## Implementation hint
+
+// SymbolTable 可用 hash table 實作
+classScope      -> HashMap
+subroutineScope -> HashMap
+```
+
+### 5.11
+
+```
+# Project 11 Overview
+
+## Goal
+
+// 把 syntax analyzer 擴充成 full compiler
+Jack source code -> VM code
+
+
+## Stage 1: SymbolTable
+
+// 先讓 compiler 理解 identifier 的語意
+identifier -> category
+identifier -> kind
+identifier -> index
+identifier -> define / use
+
+
+// identifier category
+var
+argument
+static
+field
+class
+subroutine
+
+
+// var = local
+var -> local
+
+
+## Stage 1 Testing
+
+// 先用 enhanced XML 測試 SymbolTable
+Project 10 XML
++ identifier metadata
+
+
+// 目的
+test SymbolTable in isolation
+
+
+## Stage 2: Code Generation
+
+// 不再輸出 XML，改成輸出 VM code
+XML output -> VM output
+
+
+// 核心工作
+CompilationEngine -> VMWriter calls
+
+
+## Testing Rule
+
+// 測試程式本身是正確的
+// 如果執行錯，是 compiler bug
+test failure -> fix compiler
+
+
+## Test Program 1: Seven
+
+// 測試最基本 VM code generation
+constant arithmetic
+do statement
+return statement
+
+
+## Test Program 2: ConvertToBin
+
+// 測試基本 statements 和 simple expressions
+let
+if
+while
+do
+return
+simple expression
+
+
+## Test Program 3: Square
+
+// 測試 object-oriented basics
+constructor
+method
+method call expression
+object manipulation
+
+
+## Test Program 4: Average
+
+// 測試 arrays 和 strings
+array access
+array assignment
+String.new
+String.appendChar
+
+
+## Test Program 5: Pong
+
+// 測試完整 OOP application
+multiple classes
+objects
+methods
+constructors
+static variables
+interactive program
+
+
+## Test Program 6: ComplexArrays
+
+// 測試複雜 array expression
+complex index expression
+nested array access
+array manipulation
+
+
+## Development Strategy
+
+// 按測試程式順序逐步實作 compiler
+Seven -> ConvertToBin -> Square -> Average -> Pong -> ComplexArrays
+
+
+## Execution Flow
+
+// 每個測試程式的流程
+compile .jack directory
+generate .vm files
+load directory into VM Emulator
+run generated VM code
+inspect output / RAM / screen
+fix compiler if wrong
+```
